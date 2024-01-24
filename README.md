@@ -114,6 +114,13 @@ By default, `qwerty.py` looks for the stylesheet under
 `~/.config/qwerty-launcher/qwerty.css`. You can specify another path in the
 configuration file.
 
+Prerequisites
+-------------
+
+* Python 3.8+
+* PyQt5
+* python-xlib
+
 LICENSE
 -------
 
