@@ -160,6 +160,8 @@ class Launcher(QtWidgets.QMainWindow):
                 button.is_used = False
             else:
                 button.is_used = True
+            icon_name = self.settings.value(f"section_{i}/icon")
+            button.setIcon(QtGui.QIcon.fromTheme(icon_name))
             button.setText(f"{DIGITS[i]}\n{section_title}")
             button.actualizeStyle()
 
