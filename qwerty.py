@@ -3,6 +3,7 @@
 import sys
 import os
 from os.path import join, exists
+import re
 from collections import defaultdict
 import subprocess
 import argparse
@@ -13,6 +14,7 @@ import Xlib.protocol.event
 
 DIGITS = "1234567890"
 LETTERS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"]
+GEOMETRY_RE = re.compile('(\d+)x(\d+)\+(\d+)\+(\d+)')
 
 class LaunchButton(QtWidgets.QToolButton):
     triggered = QtCore.pyqtSignal(str)
@@ -60,17 +62,22 @@ class LaunchButton(QtWidgets.QToolButton):
         self.triggered.emit(self.key_id)
 
 class Launcher(QtWidgets.QMainWindow):
-    def __init__(self):
+    def __init__(self, args):
         super().__init__()
-        self.settings = QtCore.QSettings("qwerty-launcher", "qwerty")
+        if args.config:
+            self.settings = QtCore.QSettings(args.config)
+        else:
+            self.settings = QtCore.QSettings("qwerty-launcher", "qwerty")
 
-        config_dir = QStandardPaths.locate(QStandardPaths.ConfigLocation, "qwerty-launcher", QStandardPaths.LocateDirectory)
-        if config_dir:
-            css_path = join(config_dir, "qwerty.css")
-            if exists(css_path):
-                with open(css_path, 'r') as css_file:
-                    css = css_file.read()
-                    self.setStyleSheet(css)
+        css_path = self.settings.value("global/css_path")
+        if css_path is None:
+            config_dir = QStandardPaths.locate(QStandardPaths.ConfigLocation, "qwerty-launcher", QStandardPaths.LocateDirectory)
+            if config_dir:
+                css_path = join(config_dir, "qwerty.css")
+        if exists(css_path):
+            with open(css_path, 'r') as css_file:
+                css = css_file.read()
+                self.setStyleSheet(css)
 
         self.main_widget = QtWidgets.QWidget(self)
         self.setCentralWidget(self.main_widget)
@@ -111,6 +118,12 @@ class Launcher(QtWidgets.QMainWindow):
             self.current_section = 0
         self._setup_launch_buttons(self.current_section)
         self.section_buttons[self.current_section].toggle()
+
+        if args.geometry:
+            geometry = args.geometry[0]
+            self.setGeometry(*geometry)
+        if args.undecorated:
+            self.setWindowFlags(self.windowFlags() | QtCore.Qt.FramelessWindowHint)
 
     def _convert_class(self, clss):
         if isinstance (clss, tuple):
@@ -237,9 +250,31 @@ class Launcher(QtWidgets.QMainWindow):
         self.settings.sync()
         super().closeEvent(ev)
 
+def parse_geometry(geometry):
+    m = GEOMETRY_RE.match(geometry)
+    if m:
+        w,h,x,y = m.groups()
+        return int(x), int(y), int(w), int(h)
+    else:
+        raise ValueError("Incorrect specification of geometry")
+
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(prog="qwerty.py", description = "Keyboard-oriented graphical programs launcher with dock-like functionality")
+    parser.add_argument('-a', '--fill-empty', action='store_true', help = "For keys that are not assigned with an application, show application from another section if there are any")
+    parser.add_argument('-c', '--config', nargs=1, metavar="QWERTY.CONF", help = "Specify path to config file")
+    parser.add_argument('-g', '--geometry', nargs=1, metavar="WIDTHxHEIGHT+X+Y", type=parse_geometry, help = "Specify window geometry")
+    parser.add_argument('-f', '--fullscreen', action='store_true', help = "Show window in fullscreen mode")
+    parser.add_argument('-d', '--undecorated', action='store_true', help = "Show window without decorations")
+
+    args = parser.parse_args()
+    print(args)
+
     app = QtWidgets.QApplication(sys.argv)
-    win = Launcher()
-    win.show()
+    win = Launcher(args)
+    if args.fullscreen:
+        win.showFullScreen()
+    else:
+        win.show()
     sys.exit(app.exec_())
 
