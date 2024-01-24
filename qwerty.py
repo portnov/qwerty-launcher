@@ -3,6 +3,7 @@
 import sys
 import os
 from os.path import join, exists
+from collections import defaultdict
 import subprocess
 import argparse
 from PyQt5 import QtCore, QtWidgets, QtGui
@@ -121,19 +122,19 @@ class Launcher(QtWidgets.QMainWindow):
         if self.display is None:
             self.display = display.Display()
             self.root = self.display.screen().root
-            #self.NAME = self.display.intern_atom("_NET_WM_NAME")
+            self.NAME = self.display.intern_atom("_NET_WM_NAME")
             self.CLIENT_LIST = self.display.intern_atom("_NET_CLIENT_LIST")
             self.NET_ACTIVE_WINDOW = self.display.intern_atom("_NET_ACTIVE_WINDOW")
 
         lst = self.root.get_full_property(self.CLIENT_LIST, Xatom.WINDOW).value
         self.clients_list = [self.display.create_resource_object('window', id) for id in lst]
 
-        self.by_class = dict()
+        self.by_class = defaultdict(set)
         #self.by_title = dict()
         for w in self.clients_list:
             clss = w.get_wm_class()
             for cls in self._convert_class(clss):
-                self.by_class[cls] = w
+                self.by_class[cls].add(w)
         print(self.by_class.keys())
 
     def _setup_sections(self):
@@ -160,12 +161,12 @@ class Launcher(QtWidgets.QMainWindow):
                 button.is_used = False
             wm_class = self.settings.value(f"section_{section_id}/{letter.upper()}/class")
             if wm_class is not None:
-                win = self.by_class.get(wm_class, None)
+                wins = self.by_class.get(wm_class, None)
             else:
-                win = None
-            running = win is not None
+                wins = None
+            running = wins is not None
             #print(f"Key {letter} => wm_class {wm_class}, running {running}")
-            button.window = win
+            button.windows = wins
             button.is_running = running
             icon_name = self.settings.value(f"section_{section_id}/{letter.upper()}/icon")
             button.setIcon(QtGui.QIcon.fromTheme(icon_name))
@@ -182,29 +183,59 @@ class Launcher(QtWidgets.QMainWindow):
         mask = (X.SubstructureRedirectMask|X.SubstructureNotifyMask)
         self.root.send_event(ev, event_mask=mask)
 
-    def closeEvent(self, ev):
-        self.settings.setValue("state/last_used_section", self.current_section)
-        self.settings.sync()
-        super().closeEvent(ev)
+    def _switch_to_window(self, win):
+        self.display.flush()
+        win.configure(stack_mode = X.Above)
+        win.set_input_focus(X.RevertToNone, X.CurrentTime)
+        win_id = self.winId()
+        src = self.display.create_resource_object('window', win_id)
+        self._send_event(win, self.NET_ACTIVE_WINDOW, [1, X.CurrentTime, int(src.id)])
+        win.map()
+        self.display.flush()
+
+    def _select_window(self, wins):
+        def get_window_title(win):
+            try:
+                name = win.get_full_property(self.NAME, 0) or win.get_full_property(Xatom.WM_NAME, 0)
+                return name.value.decode('utf-8')
+            except:
+                return "(unknown)"
+
+        def menu_handler(win):
+            def handler(checked=None):
+                self._switch_to_window(win)
+            return handler
+
+        menu = QtWidgets.QMenu(self)
+        for win in wins:
+            title = get_window_title(win)
+            #print(f"{win} => {title}")
+            action = menu.addAction(title)
+            action.triggered.connect(menu_handler(win))
+        menu.exec_(QtGui.QCursor.pos())
+
+    def _switch_to_windows(self, wins):
+        if len(wins) == 1:
+            self._switch_to_window(list(wins)[0])
+        elif len(wins) > 0:
+            self._select_window(wins)
 
     def _on_key(self, key_id):
         button = self.launch_buttons[key_id]
         if button.is_running:
-            win = button.window
-            print(f"Press key <{key_id}> => switch to {win}")
-            self.display.flush()
-            win.configure(stack_mode = X.Above)
-            win.set_input_focus(X.RevertToNone, X.CurrentTime)
-            win_id = self.winId()
-            src = self.display.create_resource_object('window', win_id)
-            self._send_event(win, self.NET_ACTIVE_WINDOW, [1, X.CurrentTime, int(src.id)])
-            win.map()
-            self.display.flush()
+            wins = button.windows
+            print(f"Press key <{key_id}> => switch to {wins}")
+            self._switch_to_windows(wins)
         else:
             command = self.settings.value(f"section_{self.current_section}/{key_id}/command")
             print(f"Press key <{key_id}> => execute {command}")
             os.system(command + " &")
         QtWidgets.qApp.quit()
+
+    def closeEvent(self, ev):
+        self.settings.setValue("state/last_used_section", self.current_section)
+        self.settings.sync()
+        super().closeEvent(ev)
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
