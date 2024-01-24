@@ -8,6 +8,8 @@ It is designed to be a faster alternative to application launching menus.
 launches an application, if it is not running yet, or switches you to already
 running application.
 
+![Screenshot_20240124_230912](https://github.com/portnov/qwerty-launcher/assets/284644/a4e3d2de-cc15-4db0-8504-f0b4e91f0891)
+
 Concepts
 --------
 
@@ -100,11 +102,17 @@ For each application, the following options are used:
 CSS Stylesheet
 --------------
 
-You can find an example of a stylesheet used to customize `qwerty.py`
-appearance under `config-samples/qwerty.css`.
+You can find examples of stylesheet used to customize `qwerty.py`
+appearance under `config-samples/qwerty.css` and `default.css`.
 See also [Qt documentation](https://doc.qt.io/qt-5/stylesheet-reference.html)
 for detailed reference of available selectors and properties.
 
+For example, this is what `qwerty.css` does:
+![Screenshot_20240124_224435](https://github.com/portnov/qwerty-launcher/assets/284644/4b2867eb-3a8d-4b45-b265-8898b7af50de)
+
+By default, `qwerty.py` looks for the stylesheet under
+`~/.config/qwerty-launcher/qwerty.css`. You can specify another path in the
+configuration file.
 
 LICENSE
 -------
