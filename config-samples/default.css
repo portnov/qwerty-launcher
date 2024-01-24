@@ -1,0 +1,19 @@
+.section {
+  font-size: 16px;
+}
+
+.application {
+  font-size: 16px;
+}
+
+.application.running {
+  background-color: #888888;
+}
+
+.unused {
+  color: "gray";
+}
+
+:checked.used {
+  font-weight: bold;
+}
