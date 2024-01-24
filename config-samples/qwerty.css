@@ -1,0 +1,32 @@
+QMainWindow * {
+  padding: 0;
+  margin: 0;
+}
+
+LaunchButton {
+  border: 2px solid white;
+}
+
+.section {
+  font-size: 16px;
+}
+
+.application {
+  font-size: 16px;
+}
+
+.application.running {
+  background-color: #333333;
+}
+
+.unused {
+  color: "gray";
+}
+
+:checked {
+  border: 2px solid black;
+}
+
+:checked.used {
+  font-weight: bold;
+}

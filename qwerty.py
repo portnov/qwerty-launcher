@@ -2,7 +2,7 @@
 
 import sys
 import os
-from os.path import join, exists
+from os.path import join, exists, abspath
 import re
 from collections import defaultdict
 import subprocess
@@ -54,9 +54,8 @@ class LaunchButton(QtWidgets.QToolButton):
         self.setStyleSheet("/**/")
 
     def _on_action(self, arg=None):
-        if self.isCheckable():
-            self.toggle()
-        self.clicked.emit(self.isChecked())
+        self.animateClick()
+        #self.clicked.emit(self.isChecked())
 
     def _on_click(self, btn=None):
         self.triggered.emit(self.key_id)
@@ -65,7 +64,8 @@ class Launcher(QtWidgets.QMainWindow):
     def __init__(self, args):
         super().__init__()
         if args.config:
-            self.settings = QtCore.QSettings(args.config)
+            config = abspath(args.config[0])
+            self.settings = QtCore.QSettings(config, QtCore.QSettings.Format.NativeFormat)
         else:
             self.settings = QtCore.QSettings("qwerty-launcher", "qwerty")
 
@@ -74,6 +74,7 @@ class Launcher(QtWidgets.QMainWindow):
             config_dir = QStandardPaths.locate(QStandardPaths.ConfigLocation, "qwerty-launcher", QStandardPaths.LocateDirectory)
             if config_dir:
                 css_path = join(config_dir, "qwerty.css")
+        print(css_path)
         if exists(css_path):
             with open(css_path, 'r') as css_file:
                 css = css_file.read()
@@ -242,7 +243,8 @@ class Launcher(QtWidgets.QMainWindow):
         else:
             command = self.settings.value(f"section_{self.current_section}/{key_id}/command")
             print(f"Press key <{key_id}> => execute {command}")
-            os.system(command + " &")
+            if command:
+                os.system(command + " &")
         QtWidgets.qApp.quit()
 
     def closeEvent(self, ev):
