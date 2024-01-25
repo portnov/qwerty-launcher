@@ -60,6 +60,29 @@ class LaunchButton(QtWidgets.QToolButton):
     def _on_click(self, btn=None):
         self.triggered.emit(self.key_id)
 
+class Application:
+    def __init__(self, settings, section_id, letter, fill_empty=False):
+        self.settings = settings
+        self.letter = letter
+        self.section_id = section_id
+        self._init_from(section_id)
+        if fill_empty:
+            if not self.title:
+                self._search_section()
+
+    def _init_from(self, section_id):
+        self.title = self.settings.value(f"section_{section_id}/{self.letter.upper()}/title")
+        self.wm_class = self.settings.value(f"section_{section_id}/{self.letter.upper()}/class")
+        self.icon_name = self.settings.value(f"section_{section_id}/{self.letter.upper()}/icon")
+        self.command = self.settings.value(f"section_{section_id}/{self.letter.upper()}/command")
+
+    def _search_section(self):
+        for section_id in range(len(DIGITS)):
+            self._init_from(section_id)
+            if self.title:
+                break
+
+
 class Launcher(QtWidgets.QMainWindow):
     def __init__(self, args):
         super().__init__()
@@ -78,6 +101,7 @@ class Launcher(QtWidgets.QMainWindow):
             with open(css_path, 'r') as css_file:
                 css = css_file.read()
                 self.setStyleSheet(css)
+        self.fill_empty = args.fill_empty
 
         self.main_widget = QtWidgets.QWidget(self)
         self.setCentralWidget(self.main_widget)
@@ -166,14 +190,15 @@ class Launcher(QtWidgets.QMainWindow):
     def _setup_launch_buttons(self, section_id):
         self._setup_sections()
         for letter, button in self.launch_buttons.items():
-            title = self.settings.value(f"section_{section_id}/{letter.upper()}/title")
+            app = Application(self.settings, section_id, letter, self.fill_empty)
+            title = app.title
             if title is not None:
                 button.setText(f"{letter}\n{title}")
                 button.is_used = True
             else:
                 button.setText(letter)
                 button.is_used = False
-            wm_class = self.settings.value(f"section_{section_id}/{letter.upper()}/class")
+            wm_class = app.wm_class
             if wm_class is not None:
                 wins = self.by_class.get(wm_class, None)
             else:
@@ -182,8 +207,7 @@ class Launcher(QtWidgets.QMainWindow):
             #print(f"Key {letter} => wm_class {wm_class}, running {running}")
             button.windows = wins
             button.is_running = running
-            icon_name = self.settings.value(f"section_{section_id}/{letter.upper()}/icon")
-            button.setIcon(QtGui.QIcon.fromTheme(icon_name))
+            button.setIcon(QtGui.QIcon.fromTheme(app.icon_name))
             button.actualizeStyle()
 
     def _on_section(self, key_id):
@@ -236,12 +260,13 @@ class Launcher(QtWidgets.QMainWindow):
 
     def _on_key(self, key_id):
         button = self.launch_buttons[key_id]
+        app = Application(self.settings, self.current_section, key_id, self.fill_empty)
         if button.is_running:
             wins = button.windows
             #print(f"Press key <{key_id}> => switch to {wins}")
             self._switch_to_windows(wins)
         else:
-            command = self.settings.value(f"section_{self.current_section}/{key_id}/command")
+            command = app.command
             #print(f"Press key <{key_id}> => execute {command}")
             if command:
                 os.system(command + " &")
