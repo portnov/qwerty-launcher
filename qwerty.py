@@ -74,7 +74,6 @@ class Launcher(QtWidgets.QMainWindow):
             config_dir = QStandardPaths.locate(QStandardPaths.ConfigLocation, "qwerty-launcher", QStandardPaths.LocateDirectory)
             if config_dir:
                 css_path = join(config_dir, "qwerty.css")
-        print(css_path)
         if exists(css_path):
             with open(css_path, 'r') as css_file:
                 css = css_file.read()
@@ -149,7 +148,6 @@ class Launcher(QtWidgets.QMainWindow):
             clss = w.get_wm_class()
             for cls in self._convert_class(clss):
                 self.by_class[cls].add(w)
-        print(self.by_class.keys())
 
     def _setup_sections(self):
         self._collect_windows()
@@ -189,7 +187,7 @@ class Launcher(QtWidgets.QMainWindow):
             button.actualizeStyle()
 
     def _on_section(self, key_id):
-        print(f"Switch to section #{key_id}")
+        #print(f"Switch to section #{key_id}")
         self.current_section = key_id
         self._setup_launch_buttons(key_id)
 
@@ -240,11 +238,11 @@ class Launcher(QtWidgets.QMainWindow):
         button = self.launch_buttons[key_id]
         if button.is_running:
             wins = button.windows
-            print(f"Press key <{key_id}> => switch to {wins}")
+            #print(f"Press key <{key_id}> => switch to {wins}")
             self._switch_to_windows(wins)
         else:
             command = self.settings.value(f"section_{self.current_section}/{key_id}/command")
-            print(f"Press key <{key_id}> => execute {command}")
+            #print(f"Press key <{key_id}> => execute {command}")
             if command:
                 os.system(command + " &")
         QtWidgets.qApp.quit()
@@ -272,7 +270,6 @@ if __name__ == "__main__":
     parser.add_argument('-d', '--undecorated', action='store_true', help = "Show window without decorations")
 
     args = parser.parse_args()
-    print(args)
 
     app = QtWidgets.QApplication(sys.argv)
     win = Launcher(args)
