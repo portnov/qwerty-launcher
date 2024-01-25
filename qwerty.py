@@ -143,6 +143,10 @@ class Launcher(QtWidgets.QMainWindow):
         self._setup_launch_buttons(self.current_section)
         self.section_buttons[self.current_section].toggle()
 
+        self.exit_action = QtWidgets.QAction(self)
+        self.exit_action.setShortcut("Esc")
+        self.exit_action.triggered.connect(self._on_exit)
+
         if args.geometry:
             geometry = args.geometry[0]
             self.setGeometry(*geometry)
@@ -162,6 +166,8 @@ class Launcher(QtWidgets.QMainWindow):
             self.NAME = self.display.intern_atom("_NET_WM_NAME")
             self.CLIENT_LIST = self.display.intern_atom("_NET_CLIENT_LIST")
             self.NET_ACTIVE_WINDOW = self.display.intern_atom("_NET_ACTIVE_WINDOW")
+            self.NET_WM_DESKTOP = self.display.intern_atom("_NET_WM_DESKTOP")
+            self.NET_CURRENT_DESKTOP = self.display.intern_atom("_NET_CURRENT_DESKTOP")
 
         lst = self.root.get_full_property(self.CLIENT_LIST, Xatom.WINDOW).value
         self.clients_list = [self.display.create_resource_object('window', id) for id in lst]
@@ -223,6 +229,10 @@ class Launcher(QtWidgets.QMainWindow):
 
     def _switch_to_window(self, win):
         self.display.flush()
+
+        desk = win.get_full_property(self.NET_WM_DESKTOP, 0).value[0]
+        self._send_event(self.root, self.NET_CURRENT_DESKTOP, [desk, X.CurrentTime])
+
         win.configure(stack_mode = X.Above)
         win.set_input_focus(X.RevertToNone, X.CurrentTime)
         win_id = self.winId()
@@ -270,11 +280,18 @@ class Launcher(QtWidgets.QMainWindow):
             #print(f"Press key <{key_id}> => execute {command}")
             if command:
                 os.system(command + " &")
+        self._on_exit()
+
+    def _on_exit(self, arg=None):
+        self._save()
         QtWidgets.qApp.quit()
 
-    def closeEvent(self, ev):
+    def _save(self):
         self.settings.setValue("state/last_used_section", self.current_section)
         self.settings.sync()
+
+    def closeEvent(self, ev):
+        self._save()
         super().closeEvent(ev)
 
 def parse_geometry(geometry):
