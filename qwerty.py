@@ -101,7 +101,8 @@ class Launcher(QtWidgets.QMainWindow):
             with open(css_path, 'r') as css_file:
                 css = css_file.read()
                 self.setStyleSheet(css)
-        self.fill_empty = args.fill_empty
+        self.fill_empty = args.fill_empty or self.settings.value("global/fill_empty", False, type=bool)
+        self.no_close = args.no_close or self.settings.value("global/no_close", False, type=bool)
 
         self.main_widget = QtWidgets.QWidget(self)
         self.setCentralWidget(self.main_widget)
@@ -280,7 +281,8 @@ class Launcher(QtWidgets.QMainWindow):
             #print(f"Press key <{key_id}> => execute {command}")
             if command:
                 os.system(command + " &")
-        self._on_exit()
+        if not self.no_close:
+            self._on_exit()
 
     def _on_exit(self, arg=None):
         self._save()
@@ -310,6 +312,7 @@ if __name__ == "__main__":
     parser.add_argument('-g', '--geometry', nargs=1, metavar="WIDTHxHEIGHT+X+Y", type=parse_geometry, help = "Specify window geometry")
     parser.add_argument('-f', '--fullscreen', action='store_true', help = "Show window in fullscreen mode")
     parser.add_argument('-d', '--undecorated', action='store_true', help = "Show window without decorations")
+    parser.add_argument('-s', '--no-close', action='store_true', help = "Do not close the window after action executed")
 
     args = parser.parse_args()
 
